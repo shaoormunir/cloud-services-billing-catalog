@@ -5,12 +5,12 @@ import os
 import datetime
 
 catalog_url = 'https://globalcatalog.cloud.ibm.com/api/v1'
-pricing_url = "https://globalcatalog.cloud.ibm.com/api/v1/{}/pricing"
-headers = {'Content-Type': 'application/json', 'accept': 'application/json'}
-params ={'account':'global', 'include':'*', 'sorty-by':'name', 'descending':'false', 'languages': 'en-us', 'complete':'false'}
+
+
+
 
 def get_pricing_api_url(id):
-    return pricing_url.format(id)
+    return "https://globalcatalog.cloud.ibm.com/api/v1/{}/pricing".format(id)
 
 def upload_json_to_s3(json_data, service_name):
     bucket_name = os.environ['S3_BUCKET_NAME']
@@ -34,32 +34,40 @@ def put_service_item_to_db(service_id, service_name):
 
     put_item_to_dynamodb(table_name, service_item_dict)
 
-r = requests.get(url=catalog_url, params=params, headers=headers)
 
-# with open ('ibmcloud.json', 'w') as f:
-#     json.dump(r.json(), f)
-
-pricing_json_data = None
-headers = { 'accept': "application/json" }
-params = {'account':'global'}
-
-resource_prices = dict()
-
-for resource in r.json()['resources']:
-    #check if the url has any children
-    children_url = resource['children_url']
-
-    resource_id = resource['id']
-    print("Checking id {}".format(resource_id))
+def event_handler(event, context):
+    params ={'account':'global', 'include':'*', 'sorty-by':'name', 'descending':'false', 'languages': 'en-us', 'complete':'false'}
+    headers = {'Content-Type': 'application/json', 'accept': 'application/json'}
     
-    r = requests.get(url=url, params=params, headers=headers)
-    if(pricing_json_data is None):
-        pricing_json_data = r.json()
-    else:
-        pricing_json_data.update(r.json())
+    response = requests.get(url=catalog_url, params=params, headers=headers)
 
-with open ('ibmcloudpricing.json', 'w') as f:
-    json.dump(pricing_json_data, f)
+    resources_json_data = response.json(
+    ) if response and response.status_code == 200 else None
+
+    pricing_json_data = None
+    headers = { 'accept': "application/json" }
+    params = {'account':'global'}
+
+    resource_prices = dict()
+
+    for resource in r.json()['resources']:
+        #check if the url has any children
+        children_url = resource['children_url']
+
+        resource_id = resource['id']
+        print("Checking id {}".format(resource_id))
+        
+        r = requests.get(url=url, params=params, headers=headers)
+        if(pricing_json_data is None):
+            pricing_json_data = r.json()
+        else:
+            pricing_json_data.update(r.json())
+
+    with open ('ibmcloudpricing.json', 'w') as f:
+        json.dump(pricing_json_data, f)
+
+
+
 
 
 def rec_get_resource_price(url, resource_prices):

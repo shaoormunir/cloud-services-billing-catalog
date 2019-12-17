@@ -56,7 +56,7 @@ def event_handler(event, context):
     print(updated_on)
     page_number = 1
 
-    while True and response is not None:
+    while True and droplet_json_data is not None:
         upload_json_to_s3(droplet_json_data, page_number)
         page_number+=1
         for size in droplet_json_data['sizes']:
@@ -74,3 +74,9 @@ def event_handler(event, context):
         else:
             response = requests.get(url=base_url, headers=headers)
             droplet_json_data = response.json() if response and response.status_code == 200 else None
+            
+    return {
+        "message": "Execution of the function was successful.",
+        "event": event
+
+    }
