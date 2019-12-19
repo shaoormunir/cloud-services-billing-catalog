@@ -1,4 +1,4 @@
-service: googlecloudbillingsls
+service: cloudservicebillingsls
 # app and org for use with dashboard.serverless.com
 
 # app: appn ame on serverless.com
@@ -9,12 +9,25 @@ service: googlecloudbillingsls
 # frameworkVersion: "=X.X.X"
 
 custom:
-  ServicesTableName: "services"
-  SKUsTableName: "skus"
-  RatesTableName: "rates"
-  S3BucketName: "googlecloudbillingcatalogdump"
-  #API key needs to be set before deploying
-  GoogleCloudAPIKey: ""
+  IBMCloudResourcesTable: "ibmresources"
+  IBMCloudPlansTable: "ibmplans"
+  IBMCloudPricesMetricTable: "ibmpricemetrics"
+  IBMCloudPricesTable: "ibmprices"
+  IBMS3BucketName: "ibmcloudbillingcatalogdump"
+  
+  AzureServicesTable: "azureservices"
+  AzureS3BucketName: "azurecloudbillingcatalogdump"
+  #API keys needed by Azure
+  AzureTenantID: "d648dc39-0da3-4fee-b5f4-8fcbd4967894"
+  AzureSubscriptionID: "196cc768-c915-4ab5-83bc-d54614e69964"
+  AzureClientID: "6438333a-5022-4c88-af05-0eb1fde57e0f"
+  AzureClientSecret: "62cfd15f-bf4b-4b95-aeeb-bc09637fcaa8"
+  AzureOfferId: "MS-AZR-0003P" #this is kept as default
+
+  DigitalOceanDropletTable: "digitaloceandroplets"
+  DigitalOceanS3BucketName: "digitaloceancloudbillingdump"
+  #Auth token needed by digital ocean
+  DigitalOceanAuthToken: "1aa0fc6167681d40e2a53390eec17725992f8cea4e630a0db53e08bc4d78e6ae"
 
 provider:
   name: aws
@@ -39,7 +52,7 @@ provider:
         # gives permission to saving JSON object to S3
           - "s3:PutObject"
           - "s3:PutObjectAcl"
-        Resource: { "Fn::Join": ["", ["arn:aws:s3:::${self:custom.S3BucketName}", "/*" ] ] }
+        Resource: { "Fn::Join": ["", ["arn:aws:s3:::${self:custom.IBMS3BucketName}", "/*" ], ["arn:aws:s3:::${self:custom.AzureS3BucketName}", "/*" ], ["arn:aws:s3:::${self:custom.DigitalOceanS3BucketName}", "/*" ] ] }
 
 # you can overwrite defaults here
 #  stage: dev
@@ -55,67 +68,208 @@ provider:
 #    - exclude-me-dir/**
 
 functions:
-  cataloglambdahandler:
-    handler: handler.event_handler
+  ibmcataloglambdahandler:
+    handler: ibmcloudlambdahandler.event_handler
     environment:
-      SERVICES_TABLE_NAME: ${self:custom.ServicesTableName}
-      SKUS_TABLE_NAME: ${self:custom.SKUsTableName}
-      RATES_TABLE_NAME: ${self:custom.RatesTableName}
-      GOOGLE_CLOUD_API_KEY: ${self:custom.GoogleCloudAPIKey}
-      S3_BUCKET_NAME: ${self:custom.S3BucketName}
+      RESOURCES_TABLE_NAME: ${self:custom.IBMCloudResourcesTable}
+      PLANS_TABLE_NAME: ${self:custom.IBMCloudPlansTable}
+      PRICE_METRICS_TABLE_NAME: ${self:custom.IBMCloudPricesMetricTable}
+      PRICES_TABLE_NAME: ${self:custom.IBMCloudPricesTable}
+      S3_BUCKET_NAME: ${self:custom.IBMS3BucketName}
+    events:
+      - schedule: rate(24 hours)
+        # - schedule: cron(15 10 * * ? *)  this will run everyday at 10:15 am
+  azurecataloglambdahandler:
+    handler: azurecloudlambdahandler.event_handler
+    environment:
+      SERVICES_TABLE_NAME: ${self:custom.AzureServicesTable}
+      AZURE_TENANT_ID: ${self:custom.AzureTenantID}
+      AZURE_SUBSCRIPTION_ID: ${self:custom.AzureSubscriptionID}
+      AZURE_CLIENT_ID: ${self:custom.AzureClientID}
+      AZURE_CLIENT_SECRET: ${self:custom.AzureClientSecret}
+      AZURE_OFFER_ID: ${self:custom.AzureOfferId}
+      S3_BUCKET_NAME: ${self:custom.AzureS3BucketName}
+    events:
+      - schedule: rate(24 hours)
+        # - schedule: cron(15 10 * * ? *)  this will run everyday at 10:15 am
+  
+  digitaloceancataloglambdahandler:
+    handler: digitaloceancloudlambdahandler.event_handler
+    environment:
+      DROPLET_TABLE_NAME: ${self:custom.DigitalOceanDropletTable}
+      DIGITAL_OCEAN_AUTH_TOKEN: ${self:custom.DigitalOceanAuthToken}
+      S3_BUCKET_NAME: ${self:custom.DigitalOceanS3BucketName}
     events:
       - schedule: rate(24 hours)
         # - schedule: cron(15 10 * * ? *)  this will run everyday at 10:15 am
 
 resources:
   Resources:
-    JSONDumpBucket:
+    IBMJSONDumpBucket:
       Type: AWS::S3::Bucket
       DeletionPolicy: Delete
       Properties:
-        BucketName: ${self:custom.S3BucketName}
-    ServicesTable:
+        BucketName: ${self:custom.IBMS3BucketName}
+    AzureJSONDumpBucket:
+      Type: AWS::S3::Bucket
+      DeletionPolicy: Delete
+      Properties:
+        BucketName: ${self:custom.AzureS3BucketName}
+    DigitalOceanJSONDumpBucket:
+      Type: AWS::S3::Bucket
+      DeletionPolicy: Delete
+      Properties:
+        BucketName: ${self:custom.DigitalOceanS3BucketName}
+    IBMResourcesTable:
       Type: AWS::DynamoDB::Table
       DeletionPolicy: Delete
       Properties:
-        TableName: ${self:custom.ServicesTableName}
+        TableName: ${self:custom.IBMCloudResourcesTable}
         AttributeDefinitions:
-          - AttributeName: service_id
+          - AttributeName: resource_id
+            AttributeType: S
+          - AttributeName: resource_name
+            AttributeType: S
+          - AttributeName: resource_display_name
             AttributeType: S
         KeySchema:
-          - AttributeName: service_id
+          - AttributeName: resource_id
             KeyType: HASH
         ProvisionedThroughput: 
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
-    SKUsTable:
+    IBMPlansTable:
       Type: AWS::DynamoDB::Table
       DeletionPolicy: Delete
       Properties:
-        TableName: ${self:custom.SKUsTableName}
+        TableName: ${self:custom.IBMCloudPlansTable}
         AttributeDefinitions:
-          - AttributeName: sku_id
+          - AttributeName: resource_id
+            AttributeType: S
+          - AttributeName: plan_id
+            AttributeType: S
+          - AttributeName: plan_name
+            AttributeType: S
+          - AttributeName: plan_display_name
             AttributeType: S
         KeySchema:
-          - AttributeName: sku_id
+          - AttributeName: resource_id
             KeyType: HASH
+          - AttributeName: plan_id
+            KeyType: RANGE
         ProvisionedThroughput: 
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
-    RatesTable:
+    IBMPriceMetricsTable:
       Type: AWS::DynamoDB::Table
       DeletionPolicy: Delete
       Properties:
-        TableName: ${self:custom.RatesTableName}
+        TableName: ${self:custom.IBMCloudPricesMetricTable}
         AttributeDefinitions:
-          - AttributeName: sku_id
+          - AttributeName: plan_id
             AttributeType: S
-          - AttributeName: start_usage_amount
+          - AttributeName: price_metric_id
+            AttributeType: S
+          - AttributeName: charge_unit_display_name
+            AttributeType: S
+          - AttributeName: charge_unit_name
+            AttributeType: S
+          - AttributeName: charge_unit
+            AttributeType: S
+          - AttributeName: charge_unit_quantity
+            AttributeType: S
+        KeySchema:
+          - AttributeName: plan_id
+            KeyType: HASH
+          - AttributeName: price_metric_id
+            KeyType: RANGE
+        ProvisionedThroughput: 
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    IBMPricesTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Delete
+      Properties:
+        TableName: ${self:custom.IBMCloudPricesTable}
+        AttributeDefinitions:
+          - AttributeName: price_metric_id
+            AttributeType: S
+          - AttributeName: quantity_tier
             AttributeType: N
+          - AttributeName: price
+            AttributeType: N
+          - AttributeName: updated_on
+            AttributeType: S
         KeySchema:
-          - AttributeName: sku_id
+          - AttributeName: price_metric_id
             KeyType: HASH
-          - AttributeName: start_usage_amount
+          - AttributeName: quantity_tier
+            KeyType: RANGE
+          - AttributeName: price
+            KeyType: RANGE
+        ProvisionedThroughput: 
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    AzureServicesTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Delete
+      Properties:
+        TableName: ${self:custom.AzureServicesTable}
+        AttributeDefinitions:
+          - AttributeName: category
+            AttributeType: S
+          - AttributeName: name
+            AttributeType: S
+          - AttributeName: effective_date
+            AttributeType: S
+          - AttributeName: rate
+            AttributeType: S
+          - AttributeName: unit
+            AttributeType: S
+          - AttributeName: sub_category
+            AttributeType: S
+          - AttributeName: updated_on
+            AttributeType: S
+        KeySchema:
+          - AttributeName: category
+            KeyType: HASH
+          - AttributeName: name
+            KeyType: RANGE
+          - AttributeName: sub_category
+            KeyType: RANGE
+          - AttributeName: rate
+            KeyType: RANGE
+        ProvisionedThroughput: 
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    DigitalOceanDropletsTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Delete
+      Properties:
+        TableName: ${self:custom.DigitalOceanDropletTable}
+        AttributeDefinitions:
+          - AttributeName: slug
+            AttributeType: S
+          - AttributeName: memory
+            AttributeType: S
+          - AttributeName: vcpus
+            AttributeType: S
+          - AttributeName: disk
+            AttributeType: S
+          - AttributeName: transfer
+            AttributeType: S
+          - AttributeName: price_monthly
+            AttributeType: S
+          - AttributeName: price_hourly
+            AttributeType: S
+          - AttributeName: updated_on
+            AttributeType: S
+        KeySchema:
+          - AttributeName: slug
+            KeyType: HASH
+          - AttributeName: price_monthly
+            KeyType: RANGE
+          - AttributeName: price_hourly
             KeyType: RANGE
         ProvisionedThroughput: 
           ReadCapacityUnits: 1

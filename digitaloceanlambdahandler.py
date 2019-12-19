@@ -69,6 +69,7 @@ def event_handler(event, context):
             price_hourly = size['price_hourly']
             put_droplet_item_to_db(slug, memory, vcpus, disk, transfer, price_monthly, price_hourly, updated_on)
         base_url =get_next_page_url(droplet_json_data)
+        break
         if base_url == None:
             break
         else:

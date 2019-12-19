@@ -54,7 +54,7 @@ def put_plan_item_to_db(resource_id, plan_id, plan_name, plan_display_name):
     put_item_to_dynamodb(table_name, plan_item_dict)
 
 def put_price_metric_item_to_db(plan_id, price_metric_id, charge_unit_display_name, charge_unit_name, charge_unit, charge_unit_quantity):
-    table_name = os.environ['PRICE_METRIC_TABLE_NAME']
+    table_name = os.environ['PRICE_METRICS_TABLE_NAME']
 
     price_metric_item_dict = {}
     price_metric_item_dict['plan_id'] = plan_id
@@ -67,13 +67,14 @@ def put_price_metric_item_to_db(plan_id, price_metric_id, charge_unit_display_na
     put_item_to_dynamodb(table_name, price_metric_item_dict)
 
 
-def put_price_item_to_db(price_metric_id,quantity_tier, price):
-    table_name = os.environ['PRICE_TABLE_NAME']
+def put_price_item_to_db(price_metric_id,quantity_tier, price, updated_on):
+    table_name = os.environ['PRICES_TABLE_NAME']
 
     price_item_dict = {}
     price_item_dict['price_metric_id'] = price_metric_id
     price_item_dict['quantity_tier'] = quantity_tier
     price_item_dict['price'] = price
+    price_item_dict['updated_on'] = str(updated_on)
 
     put_item_to_dynamodb(table_name, price_item_dict)
 
@@ -94,6 +95,7 @@ def event_handler(event, context):
                 rec_get_resource_price(resource, resource_dict)
         if 'next' not in resources_json_data:
             break
+        break
         next_url = resources_json_data["next"]
         response = requests.get(url=next_url, params=get_global_params(), headers=get_headers())
         resources_json_data = response.json() if response and response.status_code == 200 else None
@@ -127,7 +129,7 @@ def rec_get_resource_price (resource, resource_dict):
                         if amount['country'] == 'USA':
                             for price in amount['prices']:
                                 print("Price Tier: {}, Price: {}".format(price['quantity_tier'], price['price']))
-                                put_price_item_to_db(metric['metric_id'], price['quantity_tier'], price['price'])
+                                put_price_item_to_db(metric['metric_id'], price['quantity_tier'], price['price'], datetime.date.today())
 
 def check_if_resource_has_children(resource):
     children_url = resource['children_url']

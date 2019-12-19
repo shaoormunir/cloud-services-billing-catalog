@@ -35,7 +35,7 @@ def put_service_item_to_db(category, name, effective_date, rate, unit, sub_categ
     service_item_dict['rate'] = rate
     service_item_dict['unit'] = unit
     service_item_dict['sub_category'] = sub_category
-    service_item_dict['updated_on'] = updated_on
+    service_item_dict['updated_on'] = str(updated_on)
 
     put_item_to_dynamodb(table_name, service_item_dict)
 
@@ -78,6 +78,7 @@ def event_handler(event, context):
     updated_on = datetime.date.today()
     print(updated_on)
 
+    count = 0
     # here we have all the service names along with their service ids
     for service in services_json_data['Meters']:
         if service.get('MeterCategory') in compute_services or service.get('MeterCategory') in storage_services or service.get('MeterCategory') in other_services:
@@ -89,6 +90,10 @@ def event_handler(event, context):
             sub_category = service['MeterSubCategory']
             unit = service['Unit']
             put_service_item_to_db(category, name, effective_date, rate, unit, sub_category, updated_on)
+            count+=1
+            if count == 3:
+                break
+       
 
     return {
         "message": "Execution of the function was successful.",
