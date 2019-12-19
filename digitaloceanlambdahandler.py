@@ -10,7 +10,7 @@ def get_next_page_url(json_response):
 
 def upload_json_to_s3(json_data, page_number):
     bucket_name = os.environ['S3_BUCKET_NAME']
-    json_file_name = "digitalocean_droplet" + page_number + '-' + str(datetime.date.today())+'.json'
+    json_file_name = "digitalocean_droplet-" + page_number + '-' + str(datetime.date.today())+'.json'
     s3_client = boto3.resource('s3')
     s3_object = s3_client.Bucket(bucket_name).Object(json_file_name)
     s3_object.put(Body=bytes(json.dumps(json_data).encode('UTF-8')),
@@ -38,8 +38,8 @@ def put_droplet_item_to_db(slug, memory, vcpus, disk, transfer, price_monthly, p
 
 def event_handler(event, context):
     # token to authenticate with the digital ocean API, set in the lambda environment variables
-    #token = os.environ['DIGITAL_OCEAN_AUTH_TOKEN']
-    token = '1aa0fc6167681d40e2a53390eec17725992f8cea4e630a0db53e08bc4d78e6ae'
+    token = os.environ['DIGITAL_OCEAN_AUTH_TOKEN']
+    #token = '1aa0fc6167681d40e2a53390eec17725992f8cea4e630a0db53e08bc4d78e6ae'
     
     # base url that will be hit first
     base_url = 'https://api.digitalocean.com/v2/sizes'
@@ -78,5 +78,4 @@ def event_handler(event, context):
     return {
         "message": "Execution of the function was successful.",
         "event": event
-
     }

@@ -13,7 +13,7 @@ def get_rate_card_url(subscription_id, offer_id, currency_id, locale_id, region_
 
 def upload_json_to_s3(json_data, service_name):
     bucket_name = os.environ['S3_BUCKET_NAME']
-    json_file_name = "azure_service_data" + '-' + str(datetime.date.today())+'.json'
+    json_file_name = "azure-" + service_name + '-' + str(datetime.date.today())+'.json'
     s3_client = boto3.resource('s3')
     s3_object = s3_client.Bucket(bucket_name).Object(json_file_name)
     s3_object.put(Body=bytes(json.dumps(json_data).encode('UTF-8')),
