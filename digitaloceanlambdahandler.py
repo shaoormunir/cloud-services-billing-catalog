@@ -10,7 +10,7 @@ def get_next_page_url(json_response):
 
 def upload_json_to_s3(json_data, page_number):
     bucket_name = os.environ['S3_BUCKET_NAME']
-    json_file_name = "digitalocean_droplet-" + page_number + '-' + str(datetime.date.today())+'.json'
+    json_file_name = "digitalocean_droplet-" + str(page_number) + '-' + str(datetime.date.today())+'.json'
     s3_client = boto3.resource('s3')
     s3_object = s3_client.Bucket(bucket_name).Object(json_file_name)
     s3_object.put(Body=bytes(json.dumps(json_data).encode('UTF-8')),
@@ -26,13 +26,14 @@ def put_droplet_item_to_db(slug, memory, vcpus, disk, transfer, price_monthly, p
 
     droplet_item_dic = {}
     droplet_item_dic['slug'] = slug
-    droplet_item_dic['memory'] = memory
-    droplet_item_dic['vcpus'] = vcpus
-    droplet_item_dic['disk'] = disk
-    droplet_item_dic['transfer'] = transfer
-    droplet_item_dic['price_monthly'] = price_monthly
-    droplet_item_dic['price_hourly'] = price_hourly
-    droplet_item_dic['updated_on'] = updated_on
+    droplet_item_dic['memory'] = str(memory)
+    droplet_item_dic['vcpus'] = str(vcpus)
+    droplet_item_dic['disk'] = str(disk)
+    droplet_item_dic['transfer'] = str(transfer)
+    droplet_item_dic['price_monthly'] = str(price_monthly)
+    droplet_item_dic['price_hourly'] = str(price_hourly)
+    droplet_item_dic['updated_on'] = str(updated_on)
+    droplet_item_dic['hash_column'] = slug + ","+ str(price_monthly)+","+str(price_hourly)
 
     put_item_to_dynamodb(table_name, droplet_item_dic)
 

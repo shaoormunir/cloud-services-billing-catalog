@@ -32,10 +32,11 @@ def put_service_item_to_db(category, name, effective_date, rate, unit, sub_categ
     service_item_dict['category'] = category
     service_item_dict['name'] = name
     service_item_dict['effective_date'] = effective_date
-    service_item_dict['rate'] = rate
+    service_item_dict['rate'] = str(rate)
     service_item_dict['unit'] = unit
     service_item_dict['sub_category'] = sub_category
     service_item_dict['updated_on'] = str(updated_on)
+    service_item_dict['hash_column'] = category + ","+sub_category+","+name + "," + str(rate)
 
     put_item_to_dynamodb(table_name, service_item_dict)
 

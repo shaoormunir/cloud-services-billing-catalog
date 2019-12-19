@@ -59,10 +59,10 @@ def put_price_metric_item_to_db(plan_id, price_metric_id, charge_unit_display_na
     price_metric_item_dict = {}
     price_metric_item_dict['plan_id'] = plan_id
     price_metric_item_dict['price_metric_id'] = price_metric_id
-    price_metric_item_dict['charge_unit_display_name'] = charge_unit_display_name
-    price_metric_item_dict['charge_unit_name'] = charge_unit_name
-    price_metric_item_dict['charge_unit'] = charge_unit
-    price_metric_item_dict['charge_unit_quantity'] = charge_unit_quantity
+    price_metric_item_dict['charge_unit_display_name'] = charge_unit_display_name if charge_unit_display_name != '' else "N/A"
+    price_metric_item_dict['charge_unit_name'] = charge_unit_name if charge_unit_name != '' else "N/A"
+    price_metric_item_dict['charge_unit'] = charge_unit if charge_unit != '' else "N/A"
+    price_metric_item_dict['charge_unit_quantity'] = str(charge_unit_quantity)
 
     put_item_to_dynamodb(table_name, price_metric_item_dict)
 
@@ -72,9 +72,10 @@ def put_price_item_to_db(price_metric_id,quantity_tier, price, updated_on):
 
     price_item_dict = {}
     price_item_dict['price_metric_id'] = price_metric_id
-    price_item_dict['quantity_tier'] = quantity_tier
-    price_item_dict['price'] = price
+    price_item_dict['quantity_tier'] = str(quantity_tier)
+    price_item_dict['price'] = str(price)
     price_item_dict['updated_on'] = str(updated_on)
+    price_item_dict['hash_column'] = price_metric_id + "," + str(quantity_tier) + "," + str(price)
 
     put_item_to_dynamodb(table_name, price_item_dict)
 
@@ -118,9 +119,9 @@ def rec_get_resource_price (resource, resource_dict):
         if pricing_json_data is not None and pricing_json_data['metrics'] is not None:
             for metric in pricing_json_data['metrics']:
 
-                put_resource_item_to_db(resource_dict['id'], resource_dict['name'], resource_dict['display_name'])
+                put_resource_item_to_db(resource_dict['resource_id'], resource_dict['name'], resource_dict['display_name'])
 
-                put_plan_item_to_db(resource_dict['id'], resource_dict['plan_id'],resource_dict['plan_name'], resource_dict['plan_display_name'])
+                put_plan_item_to_db(resource_dict['resource_id'], resource_dict['plan_id'],resource_dict['plan_name'], resource_dict['plan_display_name'])
 
                 put_price_metric_item_to_db(resource_dict['plan_id'], metric['metric_id'], metric['charge_unit_display_name'],metric['charge_unit_name'], metric['charge_unit'], metric['charge_unit_quantity'])
 

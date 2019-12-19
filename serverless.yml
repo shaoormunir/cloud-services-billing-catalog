@@ -31,7 +31,9 @@ custom:
 
 provider:
   name: aws
-  runtime: python3.7
+  runtime: python3.6
+  iamManagedPolicies:
+    - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
   iamRoleStatements:
       - Effect: "Allow"
         Action: 
@@ -44,16 +46,21 @@ provider:
           - "dynamodb:UpdateItem"
           - "dynamodb:DeleteItem"
         Resource:
-          - { "Fn::GetAtt": ["ServicesTable", "Arn"] }
-          - { "Fn::GetAtt": ["SKUsTable", "Arn"] }
-          - { "Fn::GetAtt": ["RatesTable", "Arn"] }
+          - { "Fn::GetAtt": ["IBMResourcesTable", "Arn"] }
+          - { "Fn::GetAtt": ["IBMPlansTable", "Arn"] }
+          - { "Fn::GetAtt": ["IBMPriceMetricsTable", "Arn"] }
+          - { "Fn::GetAtt": ["IBMPricesTable", "Arn"] }
+          - { "Fn::GetAtt": ["AzureServicesTable", "Arn"] }
+          - { "Fn::GetAtt": ["DigitalOceanDropletsTable", "Arn"] }
       - Effect: "Allow"
         Action:
         # gives permission to saving JSON object to S3
-          - "s3:PutObject"
+          - "s3:PutObject"  
           - "s3:PutObjectAcl"
-        Resource: { "Fn::Join": ["", ["arn:aws:s3:::${self:custom.IBMS3BucketName}", "/*" ], ["arn:aws:s3:::${self:custom.AzureS3BucketName}", "/*" ], ["arn:aws:s3:::${self:custom.DigitalOceanS3BucketName}", "/*" ] ] }
-
+        Resource: 
+          - { "Fn::Join": ["", ["arn:aws:s3:::${self:custom.IBMS3BucketName}", "/*" ]]}
+          - { "Fn::Join": ["", ["arn:aws:s3:::${self:custom.AzureS3BucketName}", "/*" ]]}
+          - { "Fn::Join": ["", ["arn:aws:s3:::${self:custom.DigitalOceanS3BucketName}", "/*" ]]}
 # you can overwrite defaults here
 #  stage: dev
 #  region: us-east-1
@@ -94,7 +101,7 @@ functions:
         # - schedule: cron(15 10 * * ? *)  this will run everyday at 10:15 am
   
   digitaloceancataloglambdahandler:
-    handler: digitaloceancloudlambdahandler.event_handler
+    handler: digitaloceanlambdahandler.event_handler
     environment:
       DROPLET_TABLE_NAME: ${self:custom.DigitalOceanDropletTable}
       DIGITAL_OCEAN_AUTH_TOKEN: ${self:custom.DigitalOceanAuthToken}
@@ -128,10 +135,6 @@ resources:
         AttributeDefinitions:
           - AttributeName: resource_id
             AttributeType: S
-          - AttributeName: resource_name
-            AttributeType: S
-          - AttributeName: resource_display_name
-            AttributeType: S
         KeySchema:
           - AttributeName: resource_id
             KeyType: HASH
@@ -147,10 +150,6 @@ resources:
           - AttributeName: resource_id
             AttributeType: S
           - AttributeName: plan_id
-            AttributeType: S
-          - AttributeName: plan_name
-            AttributeType: S
-          - AttributeName: plan_display_name
             AttributeType: S
         KeySchema:
           - AttributeName: resource_id
@@ -170,14 +169,6 @@ resources:
             AttributeType: S
           - AttributeName: price_metric_id
             AttributeType: S
-          - AttributeName: charge_unit_display_name
-            AttributeType: S
-          - AttributeName: charge_unit_name
-            AttributeType: S
-          - AttributeName: charge_unit
-            AttributeType: S
-          - AttributeName: charge_unit_quantity
-            AttributeType: S
         KeySchema:
           - AttributeName: plan_id
             KeyType: HASH
@@ -192,21 +183,11 @@ resources:
       Properties:
         TableName: ${self:custom.IBMCloudPricesTable}
         AttributeDefinitions:
-          - AttributeName: price_metric_id
-            AttributeType: S
-          - AttributeName: quantity_tier
-            AttributeType: N
-          - AttributeName: price
-            AttributeType: N
-          - AttributeName: updated_on
+          - AttributeName: hash_column
             AttributeType: S
         KeySchema:
-          - AttributeName: price_metric_id
+          - AttributeName: hash_column
             KeyType: HASH
-          - AttributeName: quantity_tier
-            KeyType: RANGE
-          - AttributeName: price
-            KeyType: RANGE
         ProvisionedThroughput: 
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
@@ -216,29 +197,11 @@ resources:
       Properties:
         TableName: ${self:custom.AzureServicesTable}
         AttributeDefinitions:
-          - AttributeName: category
-            AttributeType: S
-          - AttributeName: name
-            AttributeType: S
-          - AttributeName: effective_date
-            AttributeType: S
-          - AttributeName: rate
-            AttributeType: S
-          - AttributeName: unit
-            AttributeType: S
-          - AttributeName: sub_category
-            AttributeType: S
-          - AttributeName: updated_on
+          - AttributeName: hash_column
             AttributeType: S
         KeySchema:
-          - AttributeName: category
+          - AttributeName: hash_column
             KeyType: HASH
-          - AttributeName: name
-            KeyType: RANGE
-          - AttributeName: sub_category
-            KeyType: RANGE
-          - AttributeName: rate
-            KeyType: RANGE
         ProvisionedThroughput: 
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
@@ -248,29 +211,11 @@ resources:
       Properties:
         TableName: ${self:custom.DigitalOceanDropletTable}
         AttributeDefinitions:
-          - AttributeName: slug
-            AttributeType: S
-          - AttributeName: memory
-            AttributeType: S
-          - AttributeName: vcpus
-            AttributeType: S
-          - AttributeName: disk
-            AttributeType: S
-          - AttributeName: transfer
-            AttributeType: S
-          - AttributeName: price_monthly
-            AttributeType: S
-          - AttributeName: price_hourly
-            AttributeType: S
-          - AttributeName: updated_on
+          - AttributeName: hash_column
             AttributeType: S
         KeySchema:
-          - AttributeName: slug
+          - AttributeName: hash_column
             KeyType: HASH
-          - AttributeName: price_monthly
-            KeyType: RANGE
-          - AttributeName: price_hourly
-            KeyType: RANGE
         ProvisionedThroughput: 
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
@@ -279,3 +224,5 @@ resources:
 #     Description: "Name of the bucket"
 #     Value:
 #       Ref: JSONDumpBucket
+plugins:
+  - serverless-python-requirements
