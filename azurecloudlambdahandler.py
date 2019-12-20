@@ -41,26 +41,18 @@ def put_service_item_to_db(category, name, effective_date, rate, unit, sub_categ
     put_item_to_dynamodb(table_name, service_item_dict)
 
 def event_handler(event, context):
-    # api will be retrieved from aws lambda system environment variable
+    # required parameters will be retrieved from aws lambda system environment variable
     tenant_id = os.environ['AZURE_TENANT_ID']
     subscription_id = os.environ['AZURE_SUBSCRIPTION_ID']
     client_id = os.environ['AZURE_CLIENT_ID']
     client_secret = os.environ['AZURE_CLIENT_SECRET']
     offer_id = os.environ['AZURE_OFFER_ID']
 
-
-    # TODO: replace this with the azure related services
     compute_services = ['Virtual Machines', 'Container Instances']
     storage_services = ['SQL Database', 'SQL DB Edge', 'SQL Data Warehouse', 'SQL Server Stretch Database', 'Storage']
     other_services = []
 
     # first step is to get the token which expires every hour
-
-    # tenant_id = 'd648dc39-0da3-4fee-b5f4-8fcbd4967894'
-    # subscription_id = '196cc768-c915-4ab5-83bc-d54614e69964'
-    # client_id = "6438333a-5022-4c88-af05-0eb1fde57e0f"
-    # client_secret = "62cfd15f-bf4b-4b95-aeeb-bc09637fcaa8"
-    # offer_id = 'MS-AZR-0003P'
     data = {
         'grant_type': (None, 'client_credentials'),
         'resource': (None, 'https://management.core.windows.net/'),

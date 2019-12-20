@@ -18,16 +18,16 @@ custom:
   AzureServicesTable: "azureservices"
   AzureS3BucketName: "azurecloudbillingcatalogdump"
   #API keys needed by Azure
-  AzureTenantID: "d648dc39-0da3-4fee-b5f4-8fcbd4967894"
-  AzureSubscriptionID: "196cc768-c915-4ab5-83bc-d54614e69964"
-  AzureClientID: "6438333a-5022-4c88-af05-0eb1fde57e0f"
-  AzureClientSecret: "62cfd15f-bf4b-4b95-aeeb-bc09637fcaa8"
+  AzureTenantID: ""
+  AzureSubscriptionID: ""
+  AzureClientID: ""
+  AzureClientSecret: ""
   AzureOfferId: "MS-AZR-0003P" #this is kept as default
 
   DigitalOceanDropletTable: "digitaloceandroplets"
   DigitalOceanS3BucketName: "digitaloceancloudbillingdump"
   #Auth token needed by digital ocean
-  DigitalOceanAuthToken: "1aa0fc6167681d40e2a53390eec17725992f8cea4e630a0db53e08bc4d78e6ae"
+  DigitalOceanAuthToken: ""
 
 provider:
   name: aws

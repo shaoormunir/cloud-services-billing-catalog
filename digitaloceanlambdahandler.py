@@ -40,8 +40,6 @@ def put_droplet_item_to_db(slug, memory, vcpus, disk, transfer, price_monthly, p
 def event_handler(event, context):
     # token to authenticate with the digital ocean API, set in the lambda environment variables
     token = os.environ['DIGITAL_OCEAN_AUTH_TOKEN']
-    #token = '1aa0fc6167681d40e2a53390eec17725992f8cea4e630a0db53e08bc4d78e6ae'
-    
     # base url that will be hit first
     base_url = 'https://api.digitalocean.com/v2/sizes'
 
