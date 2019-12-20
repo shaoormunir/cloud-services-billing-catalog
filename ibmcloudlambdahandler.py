@@ -3,6 +3,7 @@ import json
 import boto3
 import os
 import datetime
+from time import sleep
 
 def get_pricing_api_url(id):
     return "https://globalcatalog.cloud.ibm.com/api/v1/{}/pricing".format(id)
@@ -19,9 +20,9 @@ def get_headers():
 def get_global_params():
     return  {'account':'global', 'include':'*', 'sorty-by':'name', 'descending':'false', 'languages': 'en-us', 'complete':'false'}
 
-def upload_json_to_s3(json_data, resource_name):
+def upload_json_to_s3(json_data, pagenumber):
     bucket_name = os.environ['S3_BUCKET_NAME']
-    json_file_name = "ibmcloud-" + resource_name + '-' + str(datetime.date.today())+'.json'
+    json_file_name = "ibmcloud-" + str(pagenumber) + '-' + str(datetime.date.today())+'.json'
     s3_client = boto3.resource('s3')
     s3_object = s3_client.Bucket(bucket_name).Object(json_file_name)
     s3_object.put(Body=bytes(json.dumps(json_data).encode('UTF-8')),
@@ -35,36 +36,47 @@ def put_item_to_dynamodb(table_name, item):
 def put_resource_item_to_db(resource_id, resource_name, resource_display_name):
     table_name = os.environ['RESOURCES_TABLE_NAME']
 
-    resource_item_dict = {}
-    resource_item_dict['resource_id'] = resource_id
-    resource_item_dict['resource_name'] = resource_name
-    resource_item_dict['resource_display_name'] = resource_display_name
+    if resource_id is not None and resource_id !="":
+        resource_item_dict = {}
+        resource_item_dict['resource_id'] = resource_id
+        resource_item_dict['resource_name'] = resource_name
+        resource_item_dict['resource_display_name'] = resource_display_name
 
-    put_item_to_dynamodb(table_name, resource_item_dict)
+        resource_item_dict = {key: value for key, value in resource_item_dict.items() if value != None and value != ""}
+
+        put_item_to_dynamodb(table_name, resource_item_dict)
 
 def put_plan_item_to_db(resource_id, plan_id, plan_name, plan_display_name):
     table_name = os.environ['PLANS_TABLE_NAME']
 
-    plan_item_dict = {}
-    plan_item_dict['resource_id'] = resource_id
-    plan_item_dict['plan_id'] = plan_id
-    plan_item_dict['plan_name'] = plan_name
-    plan_item_dict['plan_display_name'] = plan_display_name
+    if (resource_id is not None and resource_id != "") and (plan_id is not None and plan_id !=""):
+        plan_item_dict = {}
+        plan_item_dict['resource_id'] = resource_id
+        plan_item_dict['plan_id'] = plan_id
+        plan_item_dict['plan_name'] = plan_name
+        plan_item_dict['plan_display_name'] = plan_display_name
 
-    put_item_to_dynamodb(table_name, plan_item_dict)
+
+        plan_item_dict = {key: value for key, value in plan_item_dict.items() if value != None and value != ""}
+
+        put_item_to_dynamodb(table_name, plan_item_dict)
 
 def put_price_metric_item_to_db(plan_id, price_metric_id, charge_unit_display_name, charge_unit_name, charge_unit, charge_unit_quantity):
     table_name = os.environ['PRICE_METRICS_TABLE_NAME']
 
-    price_metric_item_dict = {}
-    price_metric_item_dict['plan_id'] = plan_id
-    price_metric_item_dict['price_metric_id'] = price_metric_id
-    price_metric_item_dict['charge_unit_display_name'] = charge_unit_display_name if charge_unit_display_name != '' else "N/A"
-    price_metric_item_dict['charge_unit_name'] = charge_unit_name if charge_unit_name != '' else "N/A"
-    price_metric_item_dict['charge_unit'] = charge_unit if charge_unit != '' else "N/A"
-    price_metric_item_dict['charge_unit_quantity'] = str(charge_unit_quantity)
+    if (plan_id is not None and plan_id != "") and (price_metric_id is not None and price_metric_id != ""):
+        price_metric_item_dict = {}
+        price_metric_item_dict['plan_id'] = plan_id
+        price_metric_item_dict['price_metric_id'] = price_metric_id
+        price_metric_item_dict['charge_unit_display_name'] = charge_unit_display_name
+        price_metric_item_dict['charge_unit_name'] = charge_unit_name
+        price_metric_item_dict['charge_unit'] = charge_unit 
+        price_metric_item_dict['charge_unit_quantity'] = str(charge_unit_quantity)
 
-    put_item_to_dynamodb(table_name, price_metric_item_dict)
+
+        price_metric_item_dict = {key: value for key, value in price_metric_item_dict.items() if value != None and value != ""}
+
+        put_item_to_dynamodb(table_name, price_metric_item_dict)
 
 
 def put_price_item_to_db(price_metric_id,quantity_tier, price, updated_on):
@@ -77,12 +89,16 @@ def put_price_item_to_db(price_metric_id,quantity_tier, price, updated_on):
     price_item_dict['updated_on'] = str(updated_on)
     price_item_dict['hash_column'] = price_metric_id + "," + str(quantity_tier) + "," + str(price)
 
-    put_item_to_dynamodb(table_name, price_item_dict)
+
+    price_item_dict = {key: value for key, value in price_item_dict.items() if value != None and value != ""}
+
+    if (price_item_dict["hash_column"] is not None and price_item_dict["hash_column"] != ""):
+        put_item_to_dynamodb(table_name, price_item_dict)   
 
 
 def event_handler(event, context):
     response = requests.get(url=get_global_catalog_url(), params=get_global_params(), headers=get_headers())
-
+    pagenumber = 0
     resource_required = ['BigInsights for Apache Hadoop (Subscription)', 'Block Storage', 'Blockchain Platform', 'box', 'bwlosbbroker-service', 'Compute 8x16', 'Compute 16x32 - VPC on Classic', 'Compute 2x4 - VPC on Classic', 'Compute 32x64 - VPC on Classic', 'Compute 4x8 - VPC on Classic', 'Compute 8x16 - VPC on Classic', 'Compose for MySQL', 'Compose for RethinkDB', 'Compose for ScyllaDB', 'Compute 16x32 - VPC Gen2', 'Compute 2x4 - VPC Gen2', 'Compute 32x64 - VPC Gen2', 'Compute 4x8 - VPC Gen2', 'Compute 8x16 - VPC Gen2', 'Db2 Warehouse', 'Db2', 'Databases for Elasticsearch', 'Databases for etcd', 'Databases for MongoDB', 'Databases for PostgreSQL', 'Databases for Redis', 'Db2 Hosted', 'Hyper Protect DBaaS for MongoDB', 'Hyper Protect DBaaS for PostgreSQL', 'IBM Cloud Secure Virtualization', 'Memory 4x32', 'Managed Backup Services', 'Managed Disaster Recovery Services', 'Mass Data Migration', 'Memory 16x128 - VPC on Classic', 'Memory 2x16 - VPC on Classic', 'Memory 32x256 - VPC on Classic', 'Memory 4x32 - VPC on Classic', 'Memory 8x64 - VPC on Classic', 'Memory 16x128 - VPC Gen2', 'Memory 2x16 - VPC Gen2', 'Memory 32x256 - VPC Gen2', 'Memory 4x32 - VPC Gen2', 'Memory 8x64 - VPC Gen2', 'Object Storage', 'Virtual Server']
     resources_json_data = response.json(
     ) if response and response.status_code == 200 else None
@@ -94,9 +110,10 @@ def event_handler(event, context):
                 resource_dict['display_name'] = resource['overview_ui']['en']['display_name']
                 resource_dict['resource_id'] = resource['id']
                 rec_get_resource_price(resource, resource_dict)
+        pagenumber+=1
+        upload_json_to_s3(resources_json_data, pagenumber)
         if 'next' not in resources_json_data:
             break
-        break
         next_url = resources_json_data["next"]
         response = requests.get(url=next_url, params=get_global_params(), headers=get_headers())
         resources_json_data = response.json() if response and response.status_code == 200 else None
@@ -118,7 +135,7 @@ def rec_get_resource_price (resource, resource_dict):
         pricing_json_data = pricing_response.json() if pricing_response and pricing_response.status_code == 200 else None
         if pricing_json_data is not None and pricing_json_data['metrics'] is not None:
             for metric in pricing_json_data['metrics']:
-
+                sleep(0.1)
                 put_resource_item_to_db(resource_dict['resource_id'], resource_dict['name'], resource_dict['display_name'])
 
                 put_plan_item_to_db(resource_dict['resource_id'], resource_dict['plan_id'],resource_dict['plan_name'], resource_dict['plan_display_name'])
@@ -129,7 +146,6 @@ def rec_get_resource_price (resource, resource_dict):
                     for amount in metric['amounts']:
                         if amount['country'] == 'USA':
                             for price in amount['prices']:
-                                print("Price Tier: {}, Price: {}".format(price['quantity_tier'], price['price']))
                                 put_price_item_to_db(metric['metric_id'], price['quantity_tier'], price['price'], datetime.date.today())
 
 def check_if_resource_has_children(resource):

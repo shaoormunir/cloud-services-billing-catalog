@@ -1,9 +1,11 @@
 import requests
 import json
+import codecs
 import datetime
 import boto3
 import os
 from decimal import Decimal
+from time import sleep
 
 def get_access_token_url(tenant_id):
     return  "https://login.microsoftonline.com/{tenantID}/oauth2/token".format(tenantID=tenant_id)
@@ -11,9 +13,9 @@ def get_access_token_url(tenant_id):
 def get_rate_card_url(subscription_id, offer_id, currency_id, locale_id, region_id):
     return "https://management.azure.com:443/subscriptions/{subscriptionId}/providers/Microsoft.Commerce/RateCard?api-version=2016-08-31-preview&$filter=OfferDurableId eq '{offerId}' and Currency eq '{currencyId}' and Locale eq '{localeId}' and RegionInfo eq '{regionId}'".format(subscriptionId = subscription_id, offerId = offer_id, currencyId = currency_id, localeId = locale_id, regionId = region_id)
 
-def upload_json_to_s3(json_data, service_name):
+def upload_json_to_s3(json_data):
     bucket_name = os.environ['S3_BUCKET_NAME']
-    json_file_name = "azure-" + service_name + '-' + str(datetime.date.today())+'.json'
+    json_file_name = "azure-" + str(datetime.date.today())+'.json'
     s3_client = boto3.resource('s3')
     s3_object = s3_client.Bucket(bucket_name).Object(json_file_name)
     s3_object.put(Body=bytes(json.dumps(json_data).encode('UTF-8')),
@@ -38,7 +40,10 @@ def put_service_item_to_db(category, name, effective_date, rate, unit, sub_categ
     service_item_dict['updated_on'] = str(updated_on)
     service_item_dict['hash_column'] = category + ","+sub_category+","+name + "," + str(rate)
 
-    put_item_to_dynamodb(table_name, service_item_dict)
+    service_item_dict = {key: value for key, value in service_item_dict.items() if value != None and value != ""}
+
+    if (service_item_dict["hash_column"] is not None and service_item_dict["hash_column"] != ""):
+        put_item_to_dynamodb(table_name, service_item_dict)
 
 def event_handler(event, context):
     # required parameters will be retrieved from aws lambda system environment variable
@@ -64,14 +69,10 @@ def event_handler(event, context):
     headers =  {'Authorization': 'Bearer %s' %access_token}
 
     response = requests.get(get_rate_card_url(subscription_id, offer_id, 'USD', 'en-US', 'US'), headers=headers)
-
-    services_json_data = response.json(
-    ) if response and response.status_code == 200 else None
-
+    response.encoding='utf-8-sig'
+    services_json_data = json.loads(response.text) if response and response.status_code == 200 else None
+    upload_json_to_s3(services_json_data)
     updated_on = datetime.date.today()
-    print(updated_on)
-
-    count = 0
     # here we have all the service names along with their service ids
     for service in services_json_data['Meters']:
         if service.get('MeterCategory') in compute_services or service.get('MeterCategory') in storage_services or service.get('MeterCategory') in other_services:
@@ -82,11 +83,8 @@ def event_handler(event, context):
             rate = service['MeterRates']['0'] if '0' in service['MeterRates'] else 0
             sub_category = service['MeterSubCategory']
             unit = service['Unit']
+            sleep(0.1)
             put_service_item_to_db(category, name, effective_date, rate, unit, sub_category, updated_on)
-            count+=1
-            if count == 3:
-                break
-       
 
     return {
         "message": "Execution of the function was successful.",

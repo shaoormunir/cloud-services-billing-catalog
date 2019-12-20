@@ -4,6 +4,7 @@ import datetime
 import boto3
 import os
 from decimal import Decimal
+from time import sleep
 
 def get_next_page_url(json_response):
     return json_response["links"]["pages"]["next"] if 'next' in json_response["links"]["pages"] else None
@@ -34,8 +35,11 @@ def put_droplet_item_to_db(slug, memory, vcpus, disk, transfer, price_monthly, p
     droplet_item_dic['price_hourly'] = str(price_hourly)
     droplet_item_dic['updated_on'] = str(updated_on)
     droplet_item_dic['hash_column'] = slug + ","+ str(price_monthly)+","+str(price_hourly)
+    
+    droplet_item_dic = {key: value for key, value in droplet_item_dic.items() if value != None and value != ""}
 
-    put_item_to_dynamodb(table_name, droplet_item_dic)
+    if (droplet_item_dic["hash_column"] is not None and droplet_item_dic["hash_column"] != ""):
+        put_item_to_dynamodb(table_name, droplet_item_dic)
 
 def event_handler(event, context):
     # token to authenticate with the digital ocean API, set in the lambda environment variables
@@ -52,7 +56,6 @@ def event_handler(event, context):
     ) if response and response.status_code == 200 else None
 
     updated_on = datetime.date.today()
-    print(updated_on)
     page_number = 1
 
     while True and droplet_json_data is not None:
@@ -66,9 +69,9 @@ def event_handler(event, context):
             transfer = size['transfer']
             price_monthly = size['price_monthly']
             price_hourly = size['price_hourly']
+            sleep(0.1)
             put_droplet_item_to_db(slug, memory, vcpus, disk, transfer, price_monthly, price_hourly, updated_on)
-        base_url =get_next_page_url(droplet_json_data)
-        break
+        base_url = get_next_page_url(droplet_json_data)
         if base_url == None:
             break
         else:

@@ -67,3 +67,7 @@ sls plugin install -n serverless-python-requirements
 ```
 
 This plugin reads the requirements.txt file and downloads the required libraries for handlers to run.
+
+## Write throughput issue for DynamoDB
+
+Currently, due to testing purposes on the free tier, the write capacity units for DynamoDB in serverless.yml file are set at 10 per second. To solve the issue, a sleep (0.1) command is used before inserting a value in the dynamodb table. This will save overcharging the AWS but will also slow down the execution. If you have no issue in allowing greater write throughput, you can simply delete the sleep(0.1) command in all three handlers and then increase WriteCapacityUnits in serverless.yml from 10 to 100 in all three different lambdas.
