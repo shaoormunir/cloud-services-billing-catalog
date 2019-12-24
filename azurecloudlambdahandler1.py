@@ -53,9 +53,7 @@ def event_handler(event, context):
     client_secret = os.environ['AZURE_CLIENT_SECRET']
     offer_id = os.environ['AZURE_OFFER_ID']
 
-    compute_services = ['Virtual Machines', 'Container Instances']
-    storage_services = ['SQL Database', 'SQL DB Edge', 'SQL Data Warehouse', 'SQL Server Stretch Database', 'Storage']
-    other_services = []
+    services = ['Virtual Machines', 'Container Instances','SQL Database', 'SQL DB Edge']
 
     # first step is to get the token which expires every hour
     data = {
@@ -71,11 +69,10 @@ def event_handler(event, context):
     response = requests.get(get_rate_card_url(subscription_id, offer_id, 'USD', 'en-US', 'US'), headers=headers)
     response.encoding='utf-8-sig'
     services_json_data = json.loads(response.text) if response and response.status_code == 200 else None
-    upload_json_to_s3(services_json_data)
     updated_on = datetime.date.today()
     # here we have all the service names along with their service ids
     for service in services_json_data['Meters']:
-        if service.get('MeterCategory') in compute_services or service.get('MeterCategory') in storage_services or service.get('MeterCategory') in other_services:
+        if service.get('MeterCategory') in services:
             # for the first table, get the service name and the service id
             category = service['MeterCategory']
             name = service['MeterName']
@@ -83,7 +80,6 @@ def event_handler(event, context):
             rate = service['MeterRates']['0'] if '0' in service['MeterRates'] else 0
             sub_category = service['MeterSubCategory']
             unit = service['Unit']
-            sleep(0.1)
             put_service_item_to_db(category, name, effective_date, rate, unit, sub_category, updated_on)
 
     return {

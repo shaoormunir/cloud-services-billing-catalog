@@ -83,12 +83,12 @@ functions:
       PRICE_METRICS_TABLE_NAME: ${self:custom.IBMCloudPricesMetricTable}
       PRICES_TABLE_NAME: ${self:custom.IBMCloudPricesTable}
       S3_BUCKET_NAME: ${self:custom.IBMS3BucketName}
-    timeout: 3600
+    timeout: 900
     events:
       - schedule: rate(24 hours)
         # - schedule: cron(15 10 * * ? *)  this will run everyday at 10:15 am
-  azurecataloglambdahandler:
-    handler: azurecloudlambdahandler.event_handler
+  azurecataloglambdahandler1:
+    handler: azurecloudlambdahandler1.event_handler
     environment:
       SERVICES_TABLE_NAME: ${self:custom.AzureServicesTable}
       AZURE_TENANT_ID: ${self:custom.AzureTenantID}
@@ -97,7 +97,21 @@ functions:
       AZURE_CLIENT_SECRET: ${self:custom.AzureClientSecret}
       AZURE_OFFER_ID: ${self:custom.AzureOfferId}
       S3_BUCKET_NAME: ${self:custom.AzureS3BucketName}
-    timeout: 3600
+    timeout: 900
+    events:
+      - schedule: rate(24 hours)
+        # - schedule: cron(15 10 * * ? *)  this will run everyday at 10:15 am
+  azurecataloglambdahandler2:
+    handler: azurecloudlambdahandler2.event_handler
+    environment:
+      SERVICES_TABLE_NAME: ${self:custom.AzureServicesTable}
+      AZURE_TENANT_ID: ${self:custom.AzureTenantID}
+      AZURE_SUBSCRIPTION_ID: ${self:custom.AzureSubscriptionID}
+      AZURE_CLIENT_ID: ${self:custom.AzureClientID}
+      AZURE_CLIENT_SECRET: ${self:custom.AzureClientSecret}
+      AZURE_OFFER_ID: ${self:custom.AzureOfferId}
+      S3_BUCKET_NAME: ${self:custom.AzureS3BucketName}
+    timeout: 900
     events:
       - schedule: rate(24 hours)
         # - schedule: cron(15 10 * * ? *)  this will run everyday at 10:15 am
@@ -108,7 +122,7 @@ functions:
       DROPLET_TABLE_NAME: ${self:custom.DigitalOceanDropletTable}
       DIGITAL_OCEAN_AUTH_TOKEN: ${self:custom.DigitalOceanAuthToken}
       S3_BUCKET_NAME: ${self:custom.DigitalOceanS3BucketName}
-    timeout: 3600
+    timeout: 900
     events:
       - schedule: rate(24 hours)
         # - schedule: cron(15 10 * * ? *)  this will run everyday at 10:15 am
@@ -207,7 +221,7 @@ resources:
             KeyType: HASH
         ProvisionedThroughput: 
           ReadCapacityUnits: 1
-          WriteCapacityUnits: 10
+          WriteCapacityUnits: 100
     DigitalOceanDropletsTable:
       Type: AWS::DynamoDB::Table
       DeletionPolicy: Delete
