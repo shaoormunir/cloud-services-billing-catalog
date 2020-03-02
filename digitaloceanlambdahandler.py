@@ -22,7 +22,7 @@ def put_item_to_dynamodb(table_name, item):
     table = dynamodb_client.Table(table_name)
     table.put_item(Item=item)
 
-def put_droplet_item_to_db(slug, memory, vcpus, disk, transfer, price_monthly, price_hourly, updated_on):
+def put_droplet_item_to_db(slug, memory, vcpus, disk, transfer, price_monthly, price_hourly, regions, updated_on):
     table_name = os.environ['DROPLET_TABLE_NAME']
 
     droplet_item_dic = {}
@@ -34,6 +34,7 @@ def put_droplet_item_to_db(slug, memory, vcpus, disk, transfer, price_monthly, p
     droplet_item_dic['price_monthly'] = str(price_monthly)
     droplet_item_dic['price_hourly'] = str(price_hourly)
     droplet_item_dic['updated_on'] = str(updated_on)
+    droplet_item_dic['regions'] = regions
     droplet_item_dic['hash_column'] = slug + ","+ str(price_monthly)+","+str(price_hourly)
     
     droplet_item_dic = {key: value for key, value in droplet_item_dic.items() if value != None and value != ""}
@@ -69,8 +70,9 @@ def event_handler(event, context):
             transfer = size['transfer']
             price_monthly = size['price_monthly']
             price_hourly = size['price_hourly']
+            regions = list (size['regions'])
             sleep(0.1)
-            put_droplet_item_to_db(slug, memory, vcpus, disk, transfer, price_monthly, price_hourly, updated_on)
+            put_droplet_item_to_db(slug, memory, vcpus, disk, transfer, price_monthly, price_hourly, regions, updated_on)
         base_url = get_next_page_url(droplet_json_data)
         if base_url == None:
             break

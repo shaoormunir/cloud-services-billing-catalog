@@ -27,7 +27,7 @@ def put_item_to_dynamodb(table_name, item):
     table.put_item(Item=item)
 
 
-def put_service_item_to_db(category, name, effective_date, rate, unit, sub_category, updated_on):
+def put_service_item_to_db(category, name, effective_date, rate, unit, sub_category, region, updated_on):
     table_name = os.environ['SERVICES_TABLE_NAME']
 
     service_item_dict = {}
@@ -37,8 +37,9 @@ def put_service_item_to_db(category, name, effective_date, rate, unit, sub_categ
     service_item_dict['rate'] = str(rate)
     service_item_dict['unit'] = unit
     service_item_dict['sub_category'] = sub_category
+    service_item_dict['region'] = region
     service_item_dict['updated_on'] = str(updated_on)
-    service_item_dict['hash_column'] = category + ","+sub_category+","+name + "," + str(rate)
+    service_item_dict['hash_column'] = category + ","+sub_category+","+name + "," + region + "," + str(rate)
 
     service_item_dict = {key: value for key, value in service_item_dict.items() if value != None and value != ""}
 
@@ -80,8 +81,9 @@ def event_handler(event, context):
             effective_date = service['EffectiveDate']
             rate = service['MeterRates']['0'] if '0' in service['MeterRates'] else 0
             sub_category = service['MeterSubCategory']
+            region = service['MeterRegion']
             unit = service['Unit']
-            put_service_item_to_db(category, name, effective_date, rate, unit, sub_category, updated_on)
+            put_service_item_to_db(category, name, effective_date, rate, unit, sub_category, region, updated_on)
 
     return {
         "message": "Execution of the function was successful.",

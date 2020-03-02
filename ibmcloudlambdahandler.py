@@ -46,7 +46,7 @@ def put_resource_item_to_db(resource_id, resource_name, resource_display_name):
 
         put_item_to_dynamodb(table_name, resource_item_dict)
 
-def put_plan_item_to_db(resource_id, plan_id, plan_name, plan_display_name):
+def put_plan_item_to_db(resource_id, plan_id, plan_name, plan_display_name, regions):
     table_name = os.environ['PLANS_TABLE_NAME']
 
     if (resource_id is not None and resource_id != "") and (plan_id is not None and plan_id !=""):
@@ -55,7 +55,7 @@ def put_plan_item_to_db(resource_id, plan_id, plan_name, plan_display_name):
         plan_item_dict['plan_id'] = plan_id
         plan_item_dict['plan_name'] = plan_name
         plan_item_dict['plan_display_name'] = plan_display_name
-
+        plan_item_dict['regions'] = regions
 
         plan_item_dict = {key: value for key, value in plan_item_dict.items() if value != None and value != ""}
 
@@ -129,6 +129,8 @@ def rec_get_resource_price (resource, resource_dict):
             resource_dict['plan_name'] = resource['name']
             resource_dict['plan_display_name'] = resource['overview_ui']['en']['display_name']
             resource_dict['plan_id'] = resource['id']
+            if 'geo_tags' in resource:
+                resource_dict['regions'] = list(resource['geo_tags'])
             rec_get_resource_price(resource, resource_dict)
     else:
         pricing_response = requests.get(get_pricing_api_url(resource['id']), headers=headers)
@@ -138,7 +140,7 @@ def rec_get_resource_price (resource, resource_dict):
                 sleep(0.1)
                 put_resource_item_to_db(resource_dict['resource_id'], resource_dict['name'], resource_dict['display_name'])
 
-                put_plan_item_to_db(resource_dict['resource_id'], resource_dict['plan_id'],resource_dict['plan_name'], resource_dict['plan_display_name'])
+                put_plan_item_to_db(resource_dict['resource_id'], resource_dict['plan_id'],resource_dict['plan_name'], resource_dict['plan_display_name'], resource_dict['regions'])
 
                 put_price_metric_item_to_db(resource_dict['plan_id'], metric['metric_id'], metric['charge_unit_display_name'],metric['charge_unit_name'], metric['charge_unit'], metric['charge_unit_quantity'])
 
